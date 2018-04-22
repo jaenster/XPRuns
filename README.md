@@ -22,26 +22,26 @@ Add something like this to your config files (your chars). Note its case sensiti
 
     Scripts.XPRun = true;
       // General Settings
-		  Config.XPRun.Char.type = '';					    // The type. Can be Trapsin, Warcry, Javazon, Curse, Eledruid, Hammerdin, Blizzy, Lightsorc, Smiter
+      Config.XPRun.Char.type = '';	            // The type. Can be Trapsin, Warcry, Javazon, Curse, Eledruid, Hammerdin, Blizzy, Lightsorc, Smiter
       Config.XPRun.baalFirst = false;           // Doing baal first? Most quick runs to do baal first. (saves about 20 seconds each run)
       Config.XPRun.weak = false;                // Dont worry, the script figures this out himself. However, if set on true its overruled
 
       // Baal settings
-		  Config.XPRun.Baal.do = false; 						// Do a baalrun
-		  Config.XPRun.Baal.type = '';					    // Helper or Tele to throne? (Multiple chars can tele) <-- best to have multiple
+      Config.XPRun.Baal.do = false;             // Do a baalrun
+      Config.XPRun.Baal.type = '';              // Helper or Tele to throne? (Multiple chars can tele) <-- best to have multiple
 
-		  // Nihlathak settings
-		  Config.XPRun.Nihlathak.do = false;				// Do Nihlathak as a team
-		  Config.XPRun.Nihlathak.type = '';		    	// Helper or Tele? (Multiple chars can tele). Best practice is one
+      // Nihlathak settings
+      Config.XPRun.Nihlathak.do = false;        // Do Nihlathak as a team
+      Config.XPRun.Nihlathak.type = '';         // Helper or Tele? (Multiple chars can tele). Best practice is one
 
-		  // Diablo settings
-		  Config.XPRun.Diablo.do = false;					  // Do a diarun or not?
-		  Config.XPRun.Diablo.type = '';		        // Helper or tele to chaos? If doing
-		  Config.XPRun.Diablo.fast = false;					// Not supported yet, leave it on false.
+      // Diablo settings
+      Config.XPRun.Diablo.do = false;           // Do a diarun or not?
+      Config.XPRun.Diablo.type = '';            // Helper or tele to chaos? If doing
+      Config.XPRun.Diablo.fast = false;         // Not supported yet, leave it on false.
 
-		  // Mehpisto settings
-		  Config.XPRun.Mephisto.do = false ;				// Do a mephisto run?
-		  Config.XPRun.Mephisto.type = '';		      // Tele or help?
+      // Mehpisto settings
+      Config.XPRun.Mephisto.do = false ;        // Do a mephisto run?
+      Config.XPRun.Mephisto.type = '';          // Tele or help?
 ```
 
 * This should go somewhere in *d2bs/kolbot/libs/common/Config.js*:
