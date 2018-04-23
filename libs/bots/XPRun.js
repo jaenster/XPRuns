@@ -1,25 +1,3 @@
-// Scripts.XPRun = true
-// Config.XPRun.CharType = '' 				// The type. Can be Trapsin, Warcry, Javazon,Curse, Eledruid, Hammerdin, Blizzy, Lightsorc, Smiter
-// Config.XPRun.CharWeak
-// Config.XPRun.boType = 0 					// Give (1) or receive(0) bo?
-// Config.XPRun.BoReceivers = ['Chars']		// Same configuation as BoScript (so, if you use this, dont use boscript). Only needs to be setup at the bogiver
-
-
-// Config.XPRun.nihlathak = false			// Do Nihlathak as a team
-// Config.XPRun.nihlathakType = 'Helper'	// Helper or Tele? (Multiple chars can tele). Best practice is one
-
-// Config.XPRun.baal = true 				// Do a baalrun
-// Config.XPRun.baalType = 'Helper' 		// Helper or tele to throne? (Multiple chars can tele) <-- best to have multiple
-
-// Config.XPRun.diablo = true 				// Do a diarun
-// Config.XPRun.diabloType = 'Helper' 		// Helper or tele to chaos? (Multiple chars can tele) <-- mostly best to have 1.
-// Config.XPRun.baalFirst = true 			// I recommend this settings. First do Baal, after that dia. Its faster in any possible way.
-
-//
-
-
-// boType
-
 Config.FieldID = true;
 
 var Settings = {
@@ -47,11 +25,6 @@ var Team = {
     },
     myRoleType: 0,
 
-    // Bo
-    BoType: {all: (1 | 2), Receiver: 1, Giver: 2},
-    myBoType: 0,
-    boReceivers: [],
-
     // Baal
     BaalType: {all: (1 | 2), Tele: 1, Helper: 2},
     myBaalType: 0,
@@ -70,12 +43,6 @@ var Team = {
     MephistoType: {all: (1 | 2), Tele: 1, Helper: 2},
     myMephistoType: 0,
 
-    // MiniUber
-    MiniUberType: {all: (1 | 2), Tele: 1, Helper: 2},
-    myMiniUberType: 0,
-    isUberKiller: false,
-    isKeyGetter: false,
-
     // Weak
     isWeak: false,
 
@@ -87,7 +54,6 @@ var Team = {
 
     // do baal first?
     baalFirst: false,
-
 
     // Special for tele'ers
     DontCastTp: false,
@@ -258,9 +224,6 @@ var Team = {
         this.isWeak = (resistanceAvg < 0 || Config.XPRun.Char.weak);
         print('Am i weak? :' + this.isWeak);
 
-        this.boReceivers = Config.XPRun.Bo.receivers;
-
-
         // Runs we run
         this.Baal = Config.XPRun.Baal.do;
         this.Nihlathak = Config.XPRun.Nihlathak.do;
@@ -280,7 +243,10 @@ var Team = {
 
         if (!this.isLeader) {
             //this.sendMsgLeader(JSON.stringify(Config.XPRun), this.msgTypes.config); // Send my data
+        } else {
+            print('Im the leader');
         }
+
 
         //this.sync('start');
     },
@@ -291,9 +257,10 @@ var Team = {
             // take the town portal of someone else
             if (this.DontCastTp) {
                 for (i = 0; i < 5; i += 1) {
-                    delay(1000);
+                    print('Here');
+                    delay(250);
                     if (Pather.getPortal(area, null) && Pather.usePortal(area, null)) {
-                        return true
+                        return true;
                     }
                 }
             } else {
@@ -448,7 +415,7 @@ var Area = {
     WorldstoneLvl2: 129,
     WorldstoneLvl3: 130,
     ThroneOfDestruction: 131,
-    WorldstoneChamber: 131
+    WorldstoneChamber: 132
 
 };
 
@@ -905,7 +872,7 @@ var Baal = {
 
             this.throneSafe = true;
             if (Team.isLeader) {
-                Team.sendMsg('baal',Team.msgTypes.TpSafe);
+                Team.sendMsg('baal', Team.msgTypes.TpSafe);
             }
 
             this.moveToPreattack();
@@ -945,7 +912,7 @@ var Baal = {
                     var counter = 8000 - (getTickCount() - this.tick);
                     switch (true) {
                         case (counter < 3e3):
-                            this.preattack(this.currentWave+1, counter);
+                            this.preattack(this.currentWave + 1, counter);
                             break;
                     }
 
@@ -956,25 +923,29 @@ var Baal = {
         this.killBaal = function () {
             var portal;
             print('Time to kill baal');
-            Pather.moveTo(15092, 5011);
-            Precast.doPrecast(false);
+            if (me.area !== Area.WorldstoneChamber) {
+                Pather.moveTo(15092, 5011);
+                Precast.doPrecast(false);
 
-            while (getUnit(1, 543)) {
+                while (getUnit(1, 543)) {
+                    delay(500);
+                }
+
                 delay(500);
+
+                Pather.moveTo(15092, 5011);
+
+
+                portal = getUnit(2, 563);
+
+                if (portal) {
+                    Pather.usePortal(null, null, portal);
+                } else {
+                    throw new Error("Couldn't find portal.");
+                }
             }
-
-            delay(500);
-            Pather.moveTo(15092, 5011);
-
-            portal = getUnit(2, 563);
-
-            if (portal) {
-                Pather.usePortal(null, null, portal);
-            } else {
-                throw new Error("Couldn't find portal.");
-            }
-
             Pather.moveTo(15151, 5946);
+            this.dupeTP();
             Attack.kill(544); // Baal
             Pickit.pickItems();
 
@@ -983,6 +954,7 @@ var Baal = {
                 case Team.Mephisto:
                 case (Team.Diablo && Team.baalFirst):
                     Team.usePortal(Area.Harrogath);
+                    print('Done 2');
                     break;
                 default:
                     if (Config.FieldID) {
@@ -1303,6 +1275,18 @@ var SpareTime = {
             return (Pather.getPortal(Area.Harrogath, null) && Pather.usePortal(Area.Harrogath, null));
         };
         this.toThrone = function () {
+            this.getPortal = function(area) {
+                var portal = getUnit(2, "portal");
+                if (portal) {
+                    do {
+                        if (portal.getParent() !== me.name && portal.objtype === area) {
+                            return portal;
+                        }
+
+                    } while (portal.getNext());
+                }
+                return false;
+            };
             if (me.area < Area.Harrogath) {
                 // Not in act 5
                 Town.goToTown(4);
@@ -1311,22 +1295,19 @@ var SpareTime = {
             Town.goToTown(5); // just to be sure
             Town.move("portalspot");
 
+            var portal;
             // Find portal that isn't from me.
-            var portal = getUnit(2, "portal"), takePortal = false;
-            if (portal) {
-                do {
-                    if (portal.getParent() !== me.name && portal.objtype === Area.ThroneOfDestruction) {
-                        takePortal = portal;
-                        break;
-                    }
-
-                } while (portal.getNext());
+            portal = this.getPortal(Area.WorldstoneChamber); // Worldstone chamber up?
+            if (!portal) {
+                portal = this.getPortal(Area.ThroneOfDestruction);
             }
-            if (takePortal) {
-                return Pather.usePortal(null, null, takePortal);
+
+            if (portal) {
+                return Pather.usePortal(null, null, portal);
             }
             // In case it didn't find any other portal as mine, take another back
-            return (Pather.getPortal(Area.ThroneOfDestruction, null) && Pather.usePortal(Area.ThroneOfDestruction, null));
+            return (Pather.getPortal(Area.ThroneOfDestruction, null) && Pather.usePortal(Area.ThroneOfDestruction, null)
+                || (Pather.getPortal(Area.WorldstoneChamber, null) && Pather.usePortal(Area.WorldstoneChamber, null)));
         };
         switch (wave) {
             case 1:
@@ -1384,8 +1365,6 @@ var Diablo = {
                 if (portal && Pather.usePortal(Area.ChoasSanctuary, null)) {
                     print('Already a portal cast, take this directly');
                     if (portal.getParent() === me.name) {
-                        Team.Leader = '';
-                        Team.isLeader = true;
                         // It was my portal, re init it.
                         Pather.makePortal();
                     }
@@ -1417,9 +1396,6 @@ var Diablo = {
                         Team.DontCastTp = true;
                         Team.DontCastTpReason = 'Diablo';
                         return true;
-                    } else {
-                        Team.Leader = ''; // Im the leader
-                        Team.isLeader = true; // Im the leader
                     }
                 }
                 break;
@@ -1433,12 +1409,12 @@ var Diablo = {
                 Town.move("portalspot");
                 print('Waiting for portal');
 
-                for (i = 0; i < (Settings.DiabloPortalWait*2); i += 1) {
+                for (i = 0; i < (Settings.DiabloPortalWait * 2); i += 1) {
                     portal = Pather.getPortal(Area.ChoasSanctuary, null);
                     if (portal) {
                         Team.Leader = portal.getParent();
                         Team.isLeader = false;
-                        Pather.usePortal(null,null,portal);
+                        Pather.usePortal(null, null, portal);
                         break;
                     }
                     delay(500);
@@ -1448,9 +1424,6 @@ var Diablo = {
         if (Team.baalFirst) {
             // We come from a baalrun, its about time to precast
             Precast.doPrecast(true);
-        }
-        if (!Team.DiabloFast) {
-            XPRunAttack.clear(25, 0, false, this.sort);
         }
     },
     run: function () {
@@ -1982,8 +1955,7 @@ var Nihlathak = {
     run: function () {
         // Don't do any town chores.
         // We want that everyone joins quickly after a baalrun the portal. So do lighting quick Nihlathak
-        //Town.heal();
-        return true;
+        Town.heal();
         Team.sync('Nihlathak');
         if (Team.myNihlathakType === 0 || !Team.Nihlathak || Team.isWeak) {
             print('Not doing a Nihlathak run');
@@ -2010,11 +1982,20 @@ var Nihlathak = {
             return false; // Failed Halls of Vaught
         }
         // We are in the Nihlathak's place. Kill him
-        XPRunAttack.clear(20);
+        //XPRunAttack.clear(20);
         Attack.kill(526); // Nihlathak
         Pickit.pickItems();
-        Team.usePortal(Area.Harrogath); // Go back to town.
-        return true;
+        switch (true) {
+            case Team.Mephisto: // If baalisn't first, this is the last we do
+            case Team.Diablo && Team.BaalType: // Diablo comes after nithak, if we did baal first
+                Team.usePortal(Area.Harrogath); // Go back to town.
+                return true;
+            default:
+                delay(1000);
+                quit(); // Done!;
+
+        }
+
 
     },
     init: function () {
@@ -2033,7 +2014,7 @@ var Nihlathak = {
             return false;
         }
         // Move to nihlathak.
-        Pather.moveToPreset(me.area, 2, 462, 0, 0, false, true); // Skip last teleport to have a tp relativly close by
+        Pather.moveToPreset(me.area, 2, 462, 0, 0, false); // Skip last teleport to have a tp relativly close by
         Attack.getIntoPosition(getUnit(1, 526), 10, 0x4);
 
         // Someone already put his/her's portal here?
@@ -2088,7 +2069,7 @@ function XPRun() {
             // Leader -> follower //
             ////////////////////////
             case Team.msgTypes.TpSafe:              // Leader -> follower, tp is safe
-                switch(msg) {
+                switch (msg) {
                     case 'baal':
                         Baal.throneSafe = true;
                         break;
@@ -2146,6 +2127,7 @@ function XPRun() {
     if (Team.baalFirst) {
         print('Baal->Nihlathak->Mephisto->Dia');
         Baal.run();
+        print('here');
         Nihlathak.run();
         Mephisto.run();
         Diablo.run(); // Ends in act4;
@@ -2153,6 +2135,7 @@ function XPRun() {
         print('Dia->Baal->Nihlathak->Mephisto');
         Diablo.run();
         Baal.run();
+        print('here');
         Nihlathak.run();
         Mephisto.run(); // Ends in act4
     }
