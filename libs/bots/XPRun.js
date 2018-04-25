@@ -144,6 +144,8 @@ var Team = {
 
         this.myRoleType = 0;
 
+
+        /*
         // Kind of role
         switch (true) {
             case Config.XPRun.Char.type === 'Trapsin':
@@ -173,7 +175,9 @@ var Team = {
             case Config.XPRun.Char.type === 'Smiter':
                 this.myRoleType = this.RoleType.Smiter;
                 break
-        }
+        } */
+
+        Util.autoConfig();
 
         // Baal role
         switch (true) {
@@ -217,11 +221,9 @@ var Team = {
         }
 
         // isWeak ?
-        var resistanceAvg;
-        resistanceAvg = (me.getStat(45) + me.getStat(43) + me.getStat(41) + me.getStat(39)) / 4;
 
         // Set isWeak on true if: Avg of res is lower as zero, or if it is set in the config
-        this.isWeak = (resistanceAvg < 0 || Config.XPRun.Char.weak);
+        this.isWeak = (Util.resistanceAvg() < 0 || Config.XPRun.Char.weak);
         print('Am i weak? :' + this.isWeak);
 
         // Runs we run
@@ -257,7 +259,6 @@ var Team = {
             // take the town portal of someone else
             if (this.DontCastTp) {
                 for (i = 0; i < 5; i += 1) {
-                    print('Here');
                     delay(250);
                     if (Pather.getPortal(area, null) && Pather.usePortal(area, null)) {
                         return true;
@@ -280,9 +281,12 @@ var Team = {
         };
         var i;
         for (i = 0; me.area !== area || i < 5; i += 1) {
-            this.takeTP(area);
+            if (this.takeTP(area)) {
+                return true;
+            }
             delay(100);
         }
+        return false;
 
     },
     waitUpdatedPortal: function (area, who, use) {
@@ -426,6 +430,77 @@ var Presets = {
     BaalDefault: [15094, 5038],
     BaalBarb: [15092, 5011],
 
+    skill: {
+        None: -1,
+        NormalAttack: 0,
+
+        // Ama
+        ChargedStrike: 24,
+        LightningFury: 35,
+        LightningStrike: 34,
+        SlowMissiles: 17,
+
+        // Sorc
+        StaticField: 42,
+        IceBlast: 45,
+        Lightning: 49,
+        ChainLightning: 53,
+        EnergyShield: 58,
+        Blizzard: 59,
+
+        // Necro
+        SkeletonMastery: 69,
+        CorpseExplosion: 74,
+        PoisonExplosion: 83,
+        BoneSpear: 84,
+        Decrepify: 87,
+        LowerResist: 91,
+        BoneSpirit: 93,
+        FireGolem: 94,
+        ClayGolem: 75,
+        BloodGolem: 85,
+
+        // Paladin
+
+        Smite: 97,
+        HolyBolt: 101,
+        HolyShield: 117,
+        Fanaticism: 122,
+        BlessedHammer: 112,
+        Concentration: 113,
+
+        // Barb
+        Bash: 126,
+        Stun: 139,
+        Concentrate: 144,
+        Whirlwind: 151,
+        Berserk: 152,
+        WarCry: 154,
+        Frenzy: 147,
+
+        // Druid
+        Twister: 240,
+        Tornado: 245,
+        PoisonCreeper: 222,
+        CarrionVine: 231,
+        SolarCreeper: 241,
+        SpiritWolf: 227,
+        DireWolf: 237,
+        Grizzly: 247,
+
+
+        // Assasin
+        FireBlast: 251,
+        ShockField: 256,
+        CloakOfShadows: 264,
+        Fade: 267,
+        LightningSentry: 271,
+        MindBlast: 273,
+        DeathSentry: 276,
+
+    }
+
+
 };
 
 var Util = {
@@ -483,7 +558,9 @@ var Util = {
 
         return true;
     },
-
+    resistanceAvg: function () {
+        return (me.getStat(45) + me.getStat(43) + me.getStat(41) + me.getStat(39)) / 4
+    },
     stopFollow: function () {
         print("stopFollow");
         Msg.action = "stop";
@@ -517,6 +594,352 @@ var Util = {
         }
         return true;
     },
+
+    autoConfig: function () {
+        this.printAttack = function () {
+            var i, j,
+                name = ['preattack', 'Boss untimed', 'Boss timed', 'Normal untimed', 'Normal timed', 'Immune untimed', 'Immune timed'],
+                string = 'Attack layout:\n\r';
+            for (i = 0; i < Config.AttackSkill.length; i += 1) {
+                for (j in Presets.skill) {
+                    if (Presets.hasOwnProperty(j) && typeof j === "string") {
+                        if (Config.AttackSkill[i] === Presets.skill[j]) {
+                            string += 'Config.AttackSkill[' + i + '] = ' + name[i] + '\n\r';
+                        }
+                    }
+                }
+            }
+            acPrint(string);
+        };
+        this.getIronGolem = function () {
+            var owner,
+                golem = getUnit(1, 291);
+
+            if (golem) {
+                do {
+                    owner = golem.getParent();
+
+                    if (owner && owner.name === me.name) {
+                        return copyUnit(golem);
+                    }
+                } while (golem.getNext());
+            }
+
+            return false;
+        };
+        this.bestSkill = function (skills, defaultSk) {
+
+            var max = 0,
+                theSkill = defaultSk === undefined ? -1 : defaultSk;
+
+            for (i = 0; i < skills.length; i += 1) {
+                if (getSk(skills[i]) > max) {
+                    theSkill = skills[i];
+                    max = getSk(skills[i]);
+                }
+            }
+            return theSkill;
+        };
+        this.emptyInventorySlots = function () {
+            var i, j, free = 0;
+            for (i = 0; i < 4; i += 1) {
+                for (j = 0; j < Config.Inventory[i].length; j += 1) {
+                    free += 1;
+                }
+            }
+            return free;
+        };
+        this.dodgeRules = function () {
+            Config.Dodge = true; // Move away from monsters that get too close. Don't use with short-ranged attacks like Poison Dagger.
+            Config.DodgeRange = 7; // Distance to keep from monsters.
+            Config.DodgeHP = 100; // Dodge only if HP percent is less than or equal to Config.DodgeHP. 100 = always dodge.
+        };
+        var i, skill,
+            getSk = function (number) {
+                return me.getSkill(number, 1);
+            },
+            acPrint = function (what) {
+                Util.print(what, 'AutoConfig:');
+            },
+            classes = ["Amazon", "Sorceress", "Necromancer", "Paladin", "Barbarian", "Druid", "Assassin"];
+
+        // Town settings
+        acPrint('Starting..');
+        Config.HealHP = 50;
+        Config.HealMP = 50;
+        Config.HealStatus = false;
+        Config.UseMerc = true;
+        Config.MercWatch = true;
+        Config.AvoidDolls = ([0, 1, 2, 6].indexOf(me.classid)); // Avoid dolls in case your a Ama / Sorc / Necro or Assa
+
+        // Potion settings
+        Config.UseHP = 75;
+        Config.UseRejuvHP = 45;
+        Config.UseMP = 30;
+        Config.UseRejuvMP = getSk(Presets.skill.EnergyShield) > 1 ? 25 : 0; // Only use a Rejuv pot for mana in case we have an es
+        Config.UseMercHP = 75;
+        Config.UseMercRejuv = 20;
+        Config.HPBuffer = 0;
+        Config.MPBuffer = 0;
+        Config.RejuvBuffer = Math.min(Team.isWeak ? 6 : 3, Math.max(0, Math.floor(this.emptyInventorySlots() - 12 / 2))); // If space allows it, keep 3 Rejuv's in inventory or 6 in the case we are weak
+
+        // Chicken settings
+        Config.LifeChicken = 35; // Exit game if life is less or equal to designated percent.
+        Config.ManaChicken = 0; // Exit game if mana is less or equal to designated percent.
+        Config.MercChicken = 0; // Exit game if merc's life is less or equal to designated percent.
+        Config.TownHP = 0; // Go to town if life is under designated percent.
+        Config.TownMP = 0; // Go to town if mana is under designated percent.
+
+        Config.StashGold = 100000; // Minimum amount of gold to stash.
+
+        for (i = 0; i < 4; i += 1) {
+            Config.MinColumn[i] = Config.BeltColumn[i] !== 'rv' ? 3 : 0;
+        }
+
+        // Item identification settings
+        Config.CainID.Enable = me.act === 4; // Only if we start in act4. Its quicker, otherwise it ain't.
+        Config.CainID.MinGold = 2500000;
+        Config.CainID.MinUnids = 3;
+        Config.FieldID = true;
+        Config.DroppedItemsAnnounce.Enable = false;
+        Config.DroppedItemsAnnounce.Quality = [];
+
+        // Repair settings
+        Config.CubeRepair = false;
+        Config.RepairPercent = 40;
+
+
+        // Get type of char
+
+        switch (classes[me.classid]) {
+            case 'Amazon':
+                skill = getSk(Presets.skill.ChargedStrike) + getSk(Presets.skill.LightningFury);
+                if (skill > 38) {
+                    Team.myRoleType = Team.RoleType.JavaZon;
+                }
+                break;
+            case 'Sorceress':
+                var light = getSk(Presets.skill.ChainLightning) + getSk(Presets.skill.Lightning),
+                    blizz = getSk(Presets.skill.Blizzard) + getSk(Presets.skill.IceBlast)
+
+                switch (true) {
+                    case light > blizz && light > 38:
+                        Team.myRoleType = Team.RoleType.LightSorc;
+                        break;
+                    case light < blizz && blizz > 38:
+                        Team.myRoleType = Team.RoleType.Blizzy;
+                        break;
+                }
+
+                this.dodgeRules(); // Sorcs are dodging
+
+                // Class specific config
+                Config.CastStatic = 60; // Cast static until the target is at designated life percent. 100 = disabled.
+                Config.StaticList = ["Baal", 'Mephisto', 'Diablo', 571, 572, 573]; // List of monster NAMES or CLASSIDS to static. Example: Config.StaticList = ["Andariel", 243];
+                break;
+            case 'Necromancer':
+                skill = getSk(Presets.skill.LowerResist);
+                if (skill > 1) {
+                    Team.myRoleType = Team.RoleType.CurseNecro;
+                }
+                break;
+            case 'Paladin':
+                var hammers = getSk(Presets.skill.Concentration) + getSk(Presets.skill.BlessedHammer),
+                    smiting = getSk(Presets.skill.HolyShield) + getSk(Presets.skill.Fanaticism);
+                switch (true) {
+                    case hammers > smiting && hammers > 38:
+                        Team.myRoleType = Team.RoleType.Hammerdin;
+                        break;
+                    case hammers < smiting && smiting > 38:
+                        Team.myRoleType = Team.RoleType.Smiter;
+                        break;
+                }
+
+                Config.AvoidDolls = Team.myRoleType === Team.RoleType.Hammerdin;
+                Config.Vigor = true;
+                Config.Charge = true;
+                Config.Redemption = [50, 50];
+                break;
+            case 'Barbarian':
+                skill = getSk(Presets.skill.WarCry);
+                if (skill > 1) {
+                    Team.myRoleType = Team.RoleType.Warcry;
+                }
+                break;
+            case 'Druid':
+                skill = getSk(Presets.skill.Tornado) + getSk(Presets.skill.Twister);
+                if (skill > 38) {
+                    Team.myRoleType = Team.RoleType.EleDruid;
+                }
+                break;
+            case 'Assassin':
+                skill = getSk(Presets.skill.LightningSentry) + getSk(Presets.skill.DeathSentry);
+                if (skill > 38) {
+                    Team.myRoleType = Team.RoleType.Trapsin;
+                    this.dodgeRules(); // A trapsin is a casting char, aka dodge
+                }
+                break;
+        }
+
+
+        Config.BossPriority = true;
+        Config.ClearType = 0xF;
+        Config.TeleStomp = [1, 6].indexOf(me.classid); // Tele stomp only matters with a sorc or assa
+
+        switch (Team.myRoleType) {
+            case Team.RoleType.Trapsin:
+                // Attacking, Shockfield for everyone, if imumn use FireBlast. Cast Mindblast on boss's
+                Config.AttackSkill = [-1, Presets.skill.ShockField, Presets.skill.MindBlast, Presets.skill.ShockField, -1, Presets.skill.FireBlast, -1];
+
+                Config.UseTraps = true;
+                Config.Traps = [Presets.skill.LightningSentry, Presets.skill.LightningSentry, Presets.skill.LightningSentry, Presets.skill.LightningSentry, Presets.skill.DeathSentry];
+                Config.BossTraps = [Presets.skill.LightningSentry, Presets.skill.LightningSentry, Presets.skill.LightningSentry, Presets.skill.LightningSentry, Presets.skill.LightningSentry];
+
+                Config.SummonShadow = "Warrior"; // Master can cast MindBlast, we dont want that @ baalwaves
+                Config.UseFade = this.resistanceAvg() < 45 && getSk(Presets.skill.Fade) !== 0; // Use fade if our avg res is less as 50 and we have the skill
+                Config.UseBoS = !Config.useFade; // Use BoS if we dont use Fade
+                acPrint('Using ' + Config.useFade ? 'Fade' : 'BoS');
+                Config.UseVenom = false;
+                Config.UseCloakofShadows = getSk(Presets.skill.CloakOfShadows); // Only if we have it
+                break;
+            case Team.RoleType.Warcry: // ToDo: See if switch have more + skills
+
+                // Calculate the best skill for a barb, nothing found? Use "NormalAttack"
+                var barbSkill = this.bestSkill([Presets.skill.Frenzy, Presets.skill.Whirlwind, Presets.skill.Berserk, Presets.skill.Concentrate, Presets.skill.Bash, Presets.skill.Stun], Presets.skill.NormalAttack);
+
+                // Attacking, Always start with warcry, so we can stun mobs. After that, use the selected barbskill (skill with the most points)
+                Config.AttackSkill = [Presets.skill.WarCry, barbSkill, -1, barbSkill, -1, -1, -1];
+
+
+                Config.BOSwitch = 1;     // Every self respecting barb have something on switch
+                Config.FindItem = false; // Asuming we have an Corpse Necro or Trapsin with Deathsentry, we don't want this.
+                Config.FindItemSwitch = 0;
+                break;
+            case Team.RoleType.JavaZon: // ToDo: Check if we have Thunderstroke or Titans (due to selfrepair, we can spam or not spam lighting fury)
+
+                // Attacking, always start with Lighting Strike since it cast a powerfull chain lighting to clear the area. After that pure Charged strike with some lighting strike in between
+                Config.AttackSkill = [Presets.skill.LightningStrike, Presets.skill.ChargedStrike, Presets.skill.LightningStrike, Presets.skill.ChargedStrike, Presets.skill.LightningStrike, -1, -1];
+
+                Config.LightningFuryDelay = 3; // Lightning fury interval in seconds. LF is treated as timed skill.
+                Config.SummonValkyrie = true; // Summon Valkyrie
+
+                break;
+            case Team.RoleType.CurseNecro:
+                // We are a curse Necro, however, what kind of necro we are?
+                var necroSkillUntimed = this.bestSkill([Presets.skill.BoneSpear]), // Bonespear or nothing
+                    necroSkillTimed = this.bestSkill([Presets.skill.BoneSpirit]), // Bonespirit or nothing
+                    activeSummoner = getSk(Presets.skill.BoneSpirit) * 2 < getSk(Presets.skill.SkeletonMastery);                    // Is our skeleton mastery twice as high as our bonespirit? Ifso we are an active summoner
+
+                if (activeSummoner) {
+                    acPrint('Active summoner');
+                    necroSkillUntimed = necroSkillTimed; // If we found bonespear, move it to timed
+                    necroSkillTimed = 500; // Pure summoner
+                    Config.Skeletons = "max";
+                    Config.SkeletonMages = "max";
+                    Config.Revives = "max";
+                } else {
+                    Config.Skeletons = 0;
+                    Config.SkeletonMages = 0;
+                    Config.Revives = 0;
+                }
+
+                // Attacks, just what fits best
+                Config.AttackSkill = [-1, necroSkillUntimed, necroSkillTimed, necroSkillUntimed, necroSkillTimed, -1, -1];
+
+                Config.Curse[0] = Presets.skill.LowerResist;
+                Config.Curse[1] = Presets.skill.LowerResist;
+
+                Config.ExplodeCorpses = this.bestSkill([Presets.skill.CorpseExplosion, Presets.skill.PoisonExplosion]);
+
+                if (this.getIronGolem()) {
+                    Config.Golem = false; // Dont use any Golem if we detected a Iron Golem
+                } else {
+                    switch (this.bestSkill([Presets.skill.FireGolem, Presets.skill.BloodGolem, Presets.skill.ClayGolem])) {
+                        case Presets.skill.FireGolem:
+                            Config.Golem = "Fire";
+                            break;
+                        case Presets.skill.BloodGolem:
+                            Config.Golem = "Blood";
+                            break;
+                        case Presets.skill.ClayGolem:
+                            Config.Golem = "Clay";
+                            break;
+                        default:
+                            Config.Golem = false;
+                    }
+                }
+                acPrint('Golem? ' + Config.Golem);
+
+                Config.PoisonNovaDelay = 2;
+                Config.ActiveSummon = activeSummoner;
+                Config.ReviveUnstackable = true;
+                Config.IronGolemChicken = 40;
+                break;
+            case Team.RoleType.EleDruid:
+                // Start off with a twister, after that spam Tornado's
+                Config.AttackSkill = [Presets.skill.Twister, Presets.skill.Tornado, -1, Presets.skill.Tornado, -1, -1, -1];
+
+                Config.SummonRaven = false; // Why should you. Yeah they blind monsters but precasting takes forever
+                Config.SummonSpirit = "Oak Sage"; // Do you want any other?
+                switch (this.bestSkill([Presets.skill.Grizzly, Presets.skill.DireWolf, Presets.skill.SpiritWolf])) {
+                    case Presets.skill.Grizzly:
+                        Config.SummonAnimal = "Grizzly";
+                        break;
+                    case Presets.skill.DireWolf:
+                        Config.SummonAnimal = "Dire Wolf";
+                        break;
+                    case Presets.skill.SpiritWolf:
+                        Config.SummonAnimal = "Spirit Wolf";
+                        break;
+                    default:
+                        Config.SummonAnimal = '';
+                }
+                acPrint('SummonAnimal? ' + Config.SummonAnimal);
+
+                switch (this.bestSkill([Presets.skill.SolarCreeper, Presets.skill.CarrionVine, Presets.skill.PoisonCreeper])) {
+                    case Presets.skill.PoisonCreeper:
+                        Config.SummonVine = "Poison Creeper";
+                        break;
+                    case Presets.skill.CarrionVine:
+                        Config.SummonVine = "Carrion Vine";
+                        break;
+                    case Presets.skill.SolarCreeper:
+                        Config.SummonVine = "Solar Creeper";
+                        break;
+                    default:
+                        Config.SummonVine = false;
+                        break;
+                }
+                acPrint('SummonVine? ' + Config.SummonVine);
+
+                break;
+            case Team.RoleType.Blizzy:
+                // Spam blizzard ans iceblasts. Sorc's are easy to config. Imumns we handle with static and a good merc
+                Config.AttackSkill = [Presets.skill.StaticField, Presets.skill.Blizzard, Presets.skill.IceBlast, Presets.skill.Blizzard, Presets.skill.IceBlast, Presets.skill.StaticField, -1];
+                break;
+            case Team.RoleType.Hammerdin:
+                // Hammerdins are easy, just hammers and some holybolt its a undead magic imum
+                Config.AttackSkill = [-1, Presets.skill.BlessedHammer, Presets.skill.Concentration, Presets.skill.BlessedHammer, Presets.skill.Concentration, Presets.skill.HolyBolt, -1];
+                break;
+            case Team.RoleType.LightSorc:
+                // Spam lighting like crazy.
+                Config.AttackSkill = [Presets.skill.ChainLightning, Presets.skill.Lightning, Presets.skill.ChainLightning, Presets.skill.Lightning, Presets.skill.ChainLightning, -1, -1];
+                break;
+            case Team.RoleType.Smiter:
+                // Smiter, same as an hammerdin. Easy to setup. Aura and skill.
+                Config.AttackSkill = [-1, Presets.skill.Smite, Presets.skill.Fanaticism, Presets.skill.Smite, Presets.skill.Fanaticism, -1, -1];
+                break;
+
+        }
+        this.printAttack();
+        acPrint('AvoidDolls? ' + Config.AvoidDolls);
+        acPrint('RejuvBuffer? ' + Config.RejuvBuffer);
+
+    },
+    print: function (what,who) {
+        print('\xffc4XPRuns - '+who+'\xffc0: ' + what);
+    }
+
 };
 
 
@@ -768,7 +1191,7 @@ var Baal = {
                         Skill.cast(Config.AttackSkill[3], 0, 15094, 5028);
                         break;
                     case Team.RoleType.LightSorc:
-                        Skill.cast(38, 0, 15094 + rand(-1, 1), 5028 + rand(-1, 1)); // cast charged bolt
+                        Skill.cast(Presets.skill.ChainLightning, 0, 15094 + rand(-1, 1), 5028 + rand(-1, 1)); // cast charged bolt
 
                 }
 
@@ -780,8 +1203,13 @@ var Baal = {
                 switch (Team.myRoleType) {
                     case Team.RoleType.JavaZon:
                         if (wave === 3) {
-                            Skill.cast(17, 0, 15094, 5028); // slow missile
+                            Skill.cast(17); // slow missile
                         }
+                        // Spawn 3 Lighting furys, but only if wave isn't done
+                        for(i = 0; i < 3 && this.checkThrone(); i += 1) {
+                            Skill.cast(Presets.skill.LightningFury,undefined,15086,5020)
+                        }
+                        break;
                         break;
                     case Team.RoleType.LightSorc: // Sorceress
                     case Team.RoleType.Blizzy: // Sorceress
@@ -819,6 +1247,7 @@ var Baal = {
 
             // Do certain stuff like replacing the traps after a wave
             this.postCast = function (wave) {
+                var i;
                 switch (Team.myRoleType) {
                     case Team.RoleType.Trapsin: // Assassin
                         // Place traps again
@@ -1275,7 +1704,7 @@ var SpareTime = {
             return (Pather.getPortal(Area.Harrogath, null) && Pather.usePortal(Area.Harrogath, null));
         };
         this.toThrone = function () {
-            this.getPortal = function(area) {
+            this.getPortal = function (area) {
                 var portal = getUnit(2, "portal");
                 if (portal) {
                     do {
@@ -1323,6 +1752,7 @@ var SpareTime = {
                 break;
             case 5:
                 this.ThroneToTown();
+                var done = true;
                 switch (true) {
                     case Team.myNihlathakType === Team.NihlathakType.Tele && Team.Nihlathak:
                         Nihlathak.init(); // Tele now for later
@@ -1333,8 +1763,12 @@ var SpareTime = {
                     case Team.myDiabloType === Team.DiabloType.Tele && Team.Diablo:
                         Diablo.init();
                         break;
+                    default:
+                        done = false;
                 }
-                Town.doChores();
+                if (!done) {
+                    Town.doChores();
+                }
                 this.toThrone();
                 break;
         }
@@ -1354,7 +1788,6 @@ var Diablo = {
         var portal, i;
         switch (Team.myDiabloType) {
             case Team.DiabloType.Tele:
-                Team.sync('Diablo');
                 print('Teling to Diablo');
                 Town.doChores();
 
@@ -1401,9 +1834,6 @@ var Diablo = {
                 break;
 
             case Team.DiabloType.Helper:
-                if (Team.baalFirst) {
-                    Team.sync('Diablo');
-                }
                 Town.doChores();
                 Town.goToTown(4);
                 Town.move("portalspot");
@@ -1412,8 +1842,6 @@ var Diablo = {
                 for (i = 0; i < (Settings.DiabloPortalWait * 2); i += 1) {
                     portal = Pather.getPortal(Area.ChoasSanctuary, null);
                     if (portal) {
-                        Team.Leader = portal.getParent();
-                        Team.isLeader = false;
                         Pather.usePortal(null, null, portal);
                         break;
                     }
@@ -1838,12 +2266,14 @@ var Diablo = {
 
 
         if (!Team.Diablo || !Team.myDiabloType) {
+            Team.sync('Diablo');
             print('not doing a dia run');
             return false;
         }
         print('Doing a dia run');
         this.inDiarun = true;
 
+        Team.sync('Diablo');
         // Fast Dia spawns us @ vizier, normal dia at the star
         this.init();
 
@@ -1952,6 +2382,26 @@ var Mephisto = {
 };
 
 var Nihlathak = {
+    preattack: function() {
+        var target,i;
+        for (i = 0; !target && i < 5; i += 1) {
+            if (i!==0) { delay(200);}
+            target = getUnit(1, 526);
+        }
+        switch(Team.myRoleType) {
+            case Team.RoleType.JavaZon:
+                for (i=0;i<3;i+=1) {
+                    Skill.cast(Presets.skill.LightningFury, 0, target.x, target.y); // Spam a lightingfury
+                }
+                break;
+            case Team.RoleType.LightSorc:
+                for (i=0;i<3;i+=1) {
+                    Skill.cast(Presets.skill.ChainLightning, 0, target.x, target.y); // Spam a chainlightingt
+                }
+
+        }
+
+    },
     run: function () {
         // Don't do any town chores.
         // We want that everyone joins quickly after a baalrun the portal. So do lighting quick Nihlathak
@@ -2125,17 +2575,15 @@ function XPRun() {
 
     Team.init();
     if (Team.baalFirst) {
-        print('Baal->Nihlathak->Mephisto->Dia');
+        //print('Baal->Nihlathak->Mephisto->Dia');
         Baal.run();
-        print('here');
         Nihlathak.run();
         Mephisto.run();
         Diablo.run(); // Ends in act4;
     } else {
-        print('Dia->Baal->Nihlathak->Mephisto');
+        //print('Dia->Baal->Nihlathak->Mephisto');
         Diablo.run();
         Baal.run();
-        print('here');
         Nihlathak.run();
         Mephisto.run(); // Ends in act4
     }
